@@ -9,10 +9,7 @@ https://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
 https://www.sbprojects.net/knowledge/ir/nec.php
 
 TO-DO
-- buzzer
 - sleep
-- figure out rotations on vol
-- document
 - push to gibhub
 
 */
@@ -87,94 +84,77 @@ void setup() {
   attachInterrupt(clockwise_pin,         change_volume_one_tick, FALLING);
 
   // initialize serial (for debugging)
-  Serial.begin(9600);
+  // Serial.begin(9600);
 }
 
 void toggle_power(){
+//  play_click_sound();
   if(power_is_on){
-    Serial.print("sending OFF commands... ");
+//    Serial.print("sending OFF commands... ");
     turn_off();
     power_is_on = false;
-    Serial.println("done");
+//    Serial.println("done");
     return;
   } else {
-    Serial.print("sending ON commands... ");
+//    Serial.print("sending ON commands... ");
     turn_on();
     power_is_on = true;
-    Serial.println("done");
+//    Serial.println("done");
     return;
   }
 }
 
 void change_volume_one_tick(){
+  // Our rotary encoder outouts two offset square wave forms
+  // via pins A and B. We use a falling signal on the A
+  // waveform to trigger this ISR, and then check whether B
+  // is high or low, which will tell us the direction of
+  // the turn.
+  
+//  play_click_sound();
   if(digitalRead(counter_clockwise_pin) == 0){
-    Serial.print("sending VOL + command... ");
+//    Serial.print("sending VOL + command... ");
     send_command(increase_volume, false);
-    Serial.println("done");
+//    Serial.println("done");
   } else {
-    Serial.print("sending VOL - command... ");
+//    Serial.print("sending VOL - command... ");
     send_command(decrease_volume, false);
-    Serial.println("done");
+//    Serial.println("done");
   }
 }
 
 // Main loop (runs continuously after the setup function finishes)
 void loop() {
-//  demo();
-//
-//  if (digitalRead(down_push_pin) == 0){
-//    Serial.print("turning on... ");
-//    turn_on();
-//    Serial.println("done!");
-//    while (digitalRead(down_push_pin == 1)){}
-//    Serial.print("turning off... ");
-//    turn_off();
-//    Serial.println("done!");
-//    Serial.println("");
-//  }
+
 }
 
 void demo(){
   
-  delayMicroseconds(1000*3000);
+  delayMicroseconds(1000000*3);
   Serial.println("turning on");
   turn_on();
   
-  delayMicroseconds(1000*3000);
+  delayMicroseconds(1000000*3);
   Serial.println("volume up X 10");
   for (int i = 0; i < 10; i++){
     send_command(increase_volume, false);
   }
   
-  delayMicroseconds(1000*3000);
+  delayMicroseconds(1000000*3);
   Serial.println("volume down X 10");
   for (int i = 0; i < 10; i++){
     send_command(decrease_volume, false);
   }
   
-  delayMicroseconds(1000*3000);
+  delayMicroseconds(1000000*3);
   Serial.println("switching to AirPLay");
   switch_to_airplay();
   
-//  delayMicroseconds(1000*3000);
-//  Serial.println("switching to white noise");
-//  switch_to_white_noise();
-  
-  delayMicroseconds(1000*3000);
+  delayMicroseconds(1000000*3);
   Serial.println("turning off");
   turn_off();
   
 }
-
-
-// Pin binaries (based on the nadlink_signal_pin constant)
-//byte port_d_pin_binary(){
-//  return B00000001 << (nadlink_signal_pin - 0); // (digital pin 0 to 7)
-//}
-//
-//byte port_b_pin_binary(){
-//  return B00000001 << (nadlink_signal_pin - 8); // (digital pin 8 to 13)
-//}
 
 // The NAD Link uses a slightly modified version of the NEC remote control protocol,
 // where 0V represents pulse, and +5V represents flat.
@@ -277,8 +257,8 @@ void change_volume_to_default() {
   // returns the volume control
   // to zero (no matter what position it was in before)
   send_command(increase_volume, false);
-  for(int i = 0; i < (250*default_volume_level/11); ++i) { 
-    // 500 repeats of the volume command 
+  for(int i = 0; i < (113*default_volume_level/11); ++i) { 
+    // 113 repeats of the volume command 
     // is just over a full rotation of the 
     // volume dial on my NAD C740
     send_repeat();
@@ -290,13 +270,15 @@ void change_volume_to_zero() {
   // on a scall from 0 to 11, 11 being the loudest
   // (assumes volume is currently at 0)
   send_command(decrease_volume, false);
-  for(int i = 0; i < (250*default_volume_level/11+20); ++i) { 
-    // 500 repeats of the volume command 
+  for(int i = 0; i < (113*default_volume_level/11+5); ++i) { 
+    // 113 repeats of the volume command 
     // is just over a full rotation of the 
     // volume dial on my NAD C740
     send_repeat();
   }
 }
+
+
 
 void toggle_speakers_a_b(){
   // toggles the speakers
@@ -321,15 +303,15 @@ void test_all_codes(){
   for (byte code = 0xFF; code > 0x00; code--){
     Serial.println(code, HEX);
     send_command(code);
-    delayMicroseconds(1000*200);
+    delayMicroseconds(1000000*200);
   }
 }
 
 void turn_on(){
   // power up
   send_command(power_on);
-  // wait 5s
-  delayMicroseconds(1000*5000);
+  // wait 4s for the amp to power up and turn on the inputs
+  delayMicroseconds(1000000*4);
   switch_to_white_noise();
   // volume to default
   change_volume_to_default();
@@ -337,28 +319,10 @@ void turn_on(){
 
 void switch_to_airplay() {
   send_command(switch_input_to_video);
-  // // toggle speakers, if neccesary
-  // if (speaker_a_on == false){
-  //   send_command(toggle_speaker_a);
-  //   speaker_a_on = true;
-  // }
-  // if (speaker_b_on == true){
-  //   send_command(toggle_speaker_b);
-  //   speaker_b_on = false;
-  // }
 }
   
 void switch_to_white_noise(){
   send_command(switch_input_to_aux);
-  // toggle speakers, if neccesary
-  // if (speaker_a_on == true){
-  //   send_command(toggle_speaker_a);
-  //   speaker_a_on = false;
-  // }
-  // if (speaker_b_on == false){
-  //   send_command(toggle_speaker_b);
-  //   speaker_b_on = true;
-  // }
 }
 
 void turn_off(){
@@ -367,6 +331,5 @@ void turn_off(){
   // switch to aux and set speakers A
   switch_to_white_noise();
   // power down
-  delayMicroseconds(1000*500);
   send_command(power_off);
 }
