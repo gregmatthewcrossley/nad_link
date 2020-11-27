@@ -8,6 +8,13 @@ NEC IR Protocal info here:
 https://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
 https://www.sbprojects.net/knowledge/ir/nec.php
 
+TO-DO
+- buzzer
+- sleep
+- figure out rotations on vol
+- document
+- push to gibhub
+
 */
 
 // The digital input pin for a clockwise turn of the dial
@@ -22,6 +29,7 @@ const int buzzer_pin = 11;
 const int nadlink_signal_pin = 13;
 
 // global variables to track the input and speaker status
+boolean power_is_on = false;
 // (there is only a toggle command for speaker, so we have 
 // to keep track of their states)
 // boolean speaker_a_on = true;
@@ -67,53 +75,92 @@ void send_command(byte command, boolean pause_before_and_aftercommand = true);
 // Initializing function (runs once on power-up)
 void setup() {
 
+  // Setup the pins for input/output
+  pinMode(down_push_pin,         INPUT_PULLUP);
   pinMode(clockwise_pin,         INPUT_PULLUP);
   pinMode(counter_clockwise_pin, INPUT_PULLUP);
-  pinMode(down_push_pin,         INPUT_PULLUP);
   pinMode(buzzer_pin,            OUTPUT);
   pinMode(nadlink_signal_pin,    OUTPUT);
+
+  // Set up the interups
+  attachInterrupt(down_push_pin,         toggle_power,           FALLING);
+  attachInterrupt(clockwise_pin,         change_volume_one_tick, FALLING);
 
   // initialize serial (for debugging)
   Serial.begin(9600);
 }
 
+void toggle_power(){
+  if(power_is_on){
+    Serial.print("sending OFF commands... ");
+    turn_off();
+    power_is_on = false;
+    Serial.println("done");
+    return;
+  } else {
+    Serial.print("sending ON commands... ");
+    turn_on();
+    power_is_on = true;
+    Serial.println("done");
+    return;
+  }
+}
+
+void change_volume_one_tick(){
+  if(digitalRead(counter_clockwise_pin) == 0){
+    Serial.print("sending VOL + command... ");
+    send_command(increase_volume, false);
+    Serial.println("done");
+  } else {
+    Serial.print("sending VOL - command... ");
+    send_command(decrease_volume, false);
+    Serial.println("done");
+  }
+}
+
 // Main loop (runs continuously after the setup function finishes)
 void loop() {
-
-//  if (digitalRead(down_push_pin)){
-//    // turn_on();
-//    send_command(power_toggle);
+//  demo();
+//
+//  if (digitalRead(down_push_pin) == 0){
+//    Serial.print("turning on... ");
+//    turn_on();
+//    Serial.println("done!");
+//    while (digitalRead(down_push_pin == 1)){}
+//    Serial.print("turning off... ");
+//    turn_off();
+//    Serial.println("done!");
+//    Serial.println("");
 //  }
-
-  demo();
-
 }
 
 void demo(){
   
+  delayMicroseconds(1000*3000);
+  Serial.println("turning on");
   turn_on();
   
-  delay(3000);
+  delayMicroseconds(1000*3000);
   Serial.println("volume up X 10");
   for (int i = 0; i < 10; i++){
     send_command(increase_volume, false);
   }
   
-  delay(3000);
+  delayMicroseconds(1000*3000);
   Serial.println("volume down X 10");
   for (int i = 0; i < 10; i++){
     send_command(decrease_volume, false);
   }
   
-  delay(3000);
+  delayMicroseconds(1000*3000);
   Serial.println("switching to AirPLay");
   switch_to_airplay();
   
-  delay(3000);
-  Serial.println("switching to white noise");
-  switch_to_white_noise();
+//  delayMicroseconds(1000*3000);
+//  Serial.println("switching to white noise");
+//  switch_to_white_noise();
   
-  delay(3000);
+  delayMicroseconds(1000*3000);
   Serial.println("turning off");
   turn_off();
   
@@ -205,7 +252,7 @@ void send_command(byte command, boolean pause_before_and_after_command){
   
   // pause (running commands too close together seems to cause them to get ignored)
   if (pause_before_and_after_command) {
-    delay(pause_length_in_ms);
+    delayMicroseconds(1000*pause_length_in_ms);
   }
   
   // send preamble signal
@@ -222,7 +269,7 @@ void send_command(byte command, boolean pause_before_and_after_command){
   command_terminator();
   
   if (pause_before_and_after_command) {
-    delay(pause_length_in_ms);
+    delayMicroseconds(1000*pause_length_in_ms);
   }
 }
 
@@ -230,7 +277,7 @@ void change_volume_to_default() {
   // returns the volume control
   // to zero (no matter what position it was in before)
   send_command(increase_volume, false);
-  for(int i = 0; i < (500*default_volume_level/11); ++i) { 
+  for(int i = 0; i < (250*default_volume_level/11); ++i) { 
     // 500 repeats of the volume command 
     // is just over a full rotation of the 
     // volume dial on my NAD C740
@@ -243,7 +290,7 @@ void change_volume_to_zero() {
   // on a scall from 0 to 11, 11 being the loudest
   // (assumes volume is currently at 0)
   send_command(decrease_volume, false);
-  for(int i = 0; i < (500*default_volume_level/11+20); ++i) { 
+  for(int i = 0; i < (250*default_volume_level/11+20); ++i) { 
     // 500 repeats of the volume command 
     // is just over a full rotation of the 
     // volume dial on my NAD C740
@@ -274,7 +321,7 @@ void test_all_codes(){
   for (byte code = 0xFF; code > 0x00; code--){
     Serial.println(code, HEX);
     send_command(code);
-    delay(200);
+    delayMicroseconds(1000*200);
   }
 }
 
@@ -282,7 +329,7 @@ void turn_on(){
   // power up
   send_command(power_on);
   // wait 5s
-  delay(5000);
+  delayMicroseconds(1000*5000);
   switch_to_white_noise();
   // volume to default
   change_volume_to_default();
@@ -320,6 +367,6 @@ void turn_off(){
   // switch to aux and set speakers A
   switch_to_white_noise();
   // power down
-  delay(500);
+  delayMicroseconds(1000*500);
   send_command(power_off);
 }
