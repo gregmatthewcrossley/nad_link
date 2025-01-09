@@ -9,8 +9,7 @@ https://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
 https://www.sbprojects.net/knowledge/ir/nec.php
 
 TO-DO
-- sleep
-- push to gibhub
+- sleep mode
 
 */
 
